@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Русский Гэндальф</title>
+  <link rel="stylesheet" href="/static/style.css?v=5">
+</head>
+<body class="start-screen">
+  <div class="page-layout">
+    <aside class="leaderboard-panel" aria-label="Таблица лидеров">
+      <div class="panel-heading">
+        <p class="eyebrow">Зал славы</p>
+        <h2>Лидеры</h2>
+      </div>
+      <ol id="leaderboard" class="leaderboard-list"></ol>
+      <p id="leaderboard-empty" class="muted">Пока никто не завершил уровень.</p>
+    </aside>
+    <main class="game-panel">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow">Prompt-injection challenge</p>
+          <h1>Русский Гэндальф</h1>
+          <p id="level-indicator"></p>
+        </div>
+        <div class="header-actions">
+          <div class="timer" aria-label="Общее время"><span>Время</span><strong id="timer">00:00</strong></div>
+          <button id="end-game" class="danger" type="button">Закончить игру</button>
+          <button id="reset" class="secondary" type="button">Начать заново</button>
+        </div>
+      </header>
+      <section class="card level-card"><h2 id="title"></h2><p id="description"></p></section>
+      <section id="chat" class="card transcript" aria-live="polite"></section>
+      <form id="chat-form" class="row"><input id="message" placeholder="Напишите сообщение помощнику…" autocomplete="off" required><button>Отправить</button></form>
+      <section class="card password-card">
+        <h3>Введите пароль</h3>
+        <div class="row"><input id="password" placeholder="Пароль" autocomplete="off"><button id="check" type="button">Проверить</button></div>
+        <p id="result"></p><button id="next" hidden type="button">Следующий уровень</button>
+      </section>
+    </main>
+  </div>
+  <div id="name-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="name-modal-title">
+    <form id="name-form" class="modal-card">
+      <p class="eyebrow">Новая игра</p><h2 id="name-modal-title">Как вас зовут?</h2>
+      <p>Имя появится в таблице лидеров после первого пройденного уровня.</p>
+      <label for="player-name">Имя игрока</label><input id="player-name" maxlength="40" autocomplete="name" required>
+      <p id="name-error" class="form-error" role="alert"></p><button type="submit">Начать игру</button>
+    </form>
+  </div>
+  <script src="/static/app.js?v=5"></script>
+</body>
+</html>
