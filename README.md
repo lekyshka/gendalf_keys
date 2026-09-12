@@ -35,7 +35,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Откройте `.env` и замените `your_groq_api_key` своим ключом:
+Откройте `.env` и вставьте свой ключ после `GROQ_API_KEY=`:
 
 ```env
 GROQ_API_KEY=gsk_ваш_ключ
@@ -158,7 +158,7 @@ pytest -q
 
 ## Публикация в GitHub
 
-`.gitignore` уже исключает `.env`, SQLite-базу, виртуальные окружения, Python-кэши и настройки редакторов.
+Публичный репозиторий содержит безопасный `.env` без API-ключа. Перед публикацией всегда проверяйте, что `GROQ_API_KEY` в нём пустой. `.gitignore` исключает SQLite-базу, виртуальные окружения, Python-кэши и настройки редакторов.
 
 ```bash
 git init
@@ -169,7 +169,7 @@ git commit -m "Initial Gandalf game"
 git branch -M main
 ```
 
-В подготовленных файлах не должно быть `.env`, `leaderboard.sqlite3`, `.venv` или `.venv-llm`.
+В подготовленных файлах не должно быть `leaderboard.sqlite3`, `.venv` или `.venv-llm`. Файл `.env` допустим только с пустым `GROQ_API_KEY` и шаблонным `SESSION_SECRET`.
 
 Создайте пустой репозиторий на GitHub, затем выполните:
 
@@ -178,4 +178,4 @@ git remote add origin https://github.com/USERNAME/REPOSITORY.git
 git push -u origin main
 ```
 
-Не используйте `git add -f .env`. Настоящий API-ключ должен существовать только в локальном `.env` или в секретах платформы развёртывания.
+Никогда не коммитьте заполненный `GROQ_API_KEY`. Для размещённой версии приложения храните ключ в секретах платформы развёртывания, а не в GitHub.
