@@ -76,6 +76,20 @@ def test_leaderboard_sorts_by_level_then_time(tmp_path, monkeypatch):
     assert [entry["name"] for entry in entries] == ["Семь", "Шесть", "Ещё шесть"]
 
 
+def test_leaderboard_survives_store_recreation(tmp_path):
+    database = tmp_path / "persistent-leaders.sqlite3"
+    app_module.Leaderboard(database).record_completion("run", "Вася", 4, 321)
+    assert app_module.Leaderboard(database).entries() == [
+        {"name": "Вася", "level": 4, "elapsed_seconds": 321}
+    ]
+
+
+def test_player_session_cookie_persists_for_one_year():
+    client = client_with_game(FakeClient(), "Вася")
+    response = client.post("/api/start-game", json={"name": "Вася"})
+    assert "Max-Age=31536000" in response.headers["set-cookie"]
+
+
 def test_end_game_freezes_last_completed_result(tmp_path, monkeypatch):
     monkeypatch.setattr(app_module, "leaderboard", app_module.Leaderboard(tmp_path / "leaders.sqlite3"))
     client = client_with_game(FakeClient(), "Анна")

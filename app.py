@@ -18,8 +18,14 @@ from llm_client import LLMError, LLMRateLimitError, key_description, save_runtim
 
 logging.basicConfig(level=settings.log_level)
 log = logging.getLogger("gandalf")
+PROJECT_ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="Русский Гэндальф: защита промптов")
-app.add_middleware(SessionMiddleware, secret_key=settings.session_secret, same_site="lax")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    same_site="lax",
+    max_age=60 * 60 * 24 * 365,
+)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 game = Game()
 
@@ -38,7 +44,7 @@ class GroqKeyBody(BaseModel):
 class Leaderboard:
     """Small local store for one result per finished game run."""
 
-    def __init__(self, path: str = "leaderboard.sqlite3"):
+    def __init__(self, path: str | Path = PROJECT_ROOT / "leaderboard.sqlite3"):
         self.path = Path(path)
         with self._connect() as connection:
             connection.execute(
@@ -52,7 +58,11 @@ class Leaderboard:
             )
 
     def _connect(self):
-        return sqlite3.connect(self.path)
+        connection = sqlite3.connect(self.path, timeout=10)
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA synchronous=FULL")
+        connection.execute("PRAGMA busy_timeout=10000")
+        return connection
 
     def record_completion(self, run_id: str, player_name: str, level: int, elapsed_seconds: int):
         with self._connect() as connection:
