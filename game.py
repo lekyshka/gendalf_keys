@@ -1,15 +1,66 @@
+import secrets
+
 from levels import LEVEL_CLASSES
 from llm_client import LLMClient
 
-SECRETS = ["лунныймаяк", "северныйкедр", "золотойдельфин", "тихийводопад", "лазурныйпарус", "морозныйтюльпан", "алыйметеор", "звёздныйкомпас"]
-SECRET_PARTS = [("лунный", "маяк"), ("северный", "кедр"), ("золотой", "дельфин"), ("тихий", "водопад"), ("лазурный", "парус"), ("морозный", "тюльпан"), ("алый", "метеор"), ("звёздный", "компас")]
+
+ADJECTIVES = {
+    "masculine": (
+        "лунный", "северный", "золотой", "тихий", "лазурный", "морозный",
+        "алый", "звёздный", "серебряный", "янтарный", "туманный", "горный",
+        "древний", "сказочный", "тайный", "багровый", "синий", "весенний",
+        "полярный", "грозовой",
+    ),
+    "feminine": (
+        "лунная", "северная", "золотая", "тихая", "лазурная", "морозная",
+        "алая", "звёздная", "серебряная", "янтарная", "туманная", "горная",
+        "древняя", "сказочная", "тайная", "багровая", "синяя", "весенняя",
+        "полярная", "грозовая",
+    ),
+    "neuter": (
+        "лунное", "северное", "золотое", "тихое", "лазурное", "морозное",
+        "алое", "звёздное", "серебряное", "янтарное", "туманное", "горное",
+        "древнее", "сказочное", "тайное", "багровое", "синее", "весеннее",
+        "полярное", "грозовое",
+    ),
+}
+NOUNS = {
+    "masculine": (
+        "маяк", "кедр", "дельфин", "водопад", "парус", "тюльпан", "метеор",
+        "компас", "ключ", "сокол", "остров", "ветер", "замок", "дракон", "сад",
+        "закат", "кристалл", "ручей", "волк", "гром",
+    ),
+    "feminine": (
+        "река", "звезда", "корона", "гавань", "волна", "ночь", "роза", "тропа",
+        "нить", "капля", "долина", "вершина", "книга", "птица", "дверь", "заря",
+        "комета", "песня", "сова", "туча",
+    ),
+    "neuter": (
+        "озеро", "сияние", "солнце", "море", "небо", "утро", "пламя", "поле",
+        "зеркало", "яблоко", "болото", "ущелье", "дерево", "царство", "письмо", "облако",
+    ),
+}
+
+
+def generate_secret_parts(excluded: list[tuple[str, str]] | None = None) -> list[tuple[str, str]]:
+    """Generate one unique lowercase adjective+noun password for every level."""
+    excluded_parts = set(excluded or [])
+    available = [
+        (adjective, noun)
+        for gender, adjectives in ADJECTIVES.items()
+        for adjective in adjectives
+        for noun in NOUNS[gender]
+        if (adjective, noun) not in excluded_parts
+    ]
+    return secrets.SystemRandom().sample(available, len(LEVEL_CLASSES))
 
 
 class Game:
-    def __init__(self, client: LLMClient | None = None):
+    def __init__(self, client: LLMClient | None = None, secret_parts: list[tuple[str, str]] | None = None):
         self.client = client or LLMClient()
-        self.levels = [klass(secret, self.client) for klass, secret in zip(LEVEL_CLASSES, SECRETS)]
-        for level, parts in zip(self.levels, SECRET_PARTS):
+        self.secret_parts = secret_parts if secret_parts is not None else generate_secret_parts()
+        self.levels = [klass("".join(parts), self.client) for klass, parts in zip(LEVEL_CLASSES, self.secret_parts)]
+        for level, parts in zip(self.levels, self.secret_parts):
             level.secret_parts = parts
 
     def level(self, index: int):

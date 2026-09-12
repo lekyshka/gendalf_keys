@@ -5,14 +5,21 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app as app_module
-from game import Game, SECRETS
+from game import ADJECTIVES, NOUNS, Game, generate_secret_parts
 from guards.secret_detector import SecretDetector
 from llm_client import LLMClient, LLMRateLimitError
 
+TEST_SECRET_PARTS = [
+    ("лунный", "маяк"), ("северный", "кедр"), ("золотой", "дельфин"),
+    ("тихий", "водопад"), ("лазурный", "парус"), ("морозный", "тюльпан"),
+    ("алый", "метеор"), ("звёздный", "компас"),
+]
+TEST_SECRETS = ["".join(parts) for parts in TEST_SECRET_PARTS]
 
 @pytest.fixture(autouse=True)
 def isolated_leaderboard(tmp_path, monkeypatch):
     monkeypatch.setattr(app_module, "leaderboard", app_module.Leaderboard(tmp_path / "leaders.sqlite3"))
+    monkeypatch.setattr(app_module, "generate_secret_parts", lambda *_: TEST_SECRET_PARTS)
 
 
 class FakeClient:
@@ -26,7 +33,7 @@ class FakeClient:
 
 
 def client_with_game(fake, name="Тест"):
-    app_module.game = Game(fake)
+    app_module.game = Game(fake, TEST_SECRET_PARTS)
     client = TestClient(app_module.app)
     client.post("/api/start-game", json={"name": name})
     return client
@@ -36,13 +43,41 @@ def test_correct_and_wrong_password_and_transition():
     c = client_with_game(FakeClient())
     assert c.get("/api/state").json()["level"] == 1
     assert not c.post("/api/check-password", json={"password": "no"}).json()["correct"]
-    assert c.post("/api/check-password", json={"password": SECRETS[0]}).json()["correct"]
+    assert c.post("/api/check-password", json={"password": TEST_SECRETS[0]}).json()["correct"]
     assert c.post("/api/next-level").json()["state"]["level"] == 2
+
+
+def test_generated_passwords_are_unique_lowercase_adjective_noun_pairs():
+    generated = generate_secret_parts(TEST_SECRET_PARTS)
+    assert len(generated) == 8
+    assert len(set(generated)) == 8
+    assert not set(generated) & set(TEST_SECRET_PARTS)
+    assert all(
+        any(adjective in ADJECTIVES[gender] and noun in NOUNS[gender] for gender in ADJECTIVES)
+        for adjective, noun in generated
+    )
+    assert all("".join(parts).islower() for parts in generated)
+
+
+def test_each_new_round_replaces_generated_passwords(monkeypatch):
+    first_parts = [("лунный", "маяк")] * 8
+    second_parts = [("алая", "роза")] * 8
+    generated = iter([first_parts, second_parts])
+    monkeypatch.setattr(app_module, "generate_secret_parts", lambda *_: next(generated))
+    app_module.game = Game(FakeClient())
+    client = TestClient(app_module.app)
+
+    assert client.post("/api/start-game", json={"name": "Первый"}).status_code == 200
+    assert client.post("/api/check-password", json={"password": "лунныймаяк"}).json()["correct"]
+    client.post("/api/reset")
+    assert client.post("/api/start-game", json={"name": "Второй"}).status_code == 200
+    assert not client.post("/api/check-password", json={"password": "лунныймаяк"}).json()["correct"]
+    assert client.post("/api/check-password", json={"password": "алаяроза"}).json()["correct"]
 
 
 def test_state_never_contains_secret():
     c = client_with_game(FakeClient())
-    assert SECRETS[0] not in c.get("/api/state").text
+    assert TEST_SECRETS[0] not in c.get("/api/state").text
 
 
 def test_game_requires_a_name_before_playing():
@@ -50,18 +85,18 @@ def test_game_requires_a_name_before_playing():
     client = TestClient(app_module.app)
     state = client.get("/api/state").json()
     assert not state["game_started"]
-    assert client.post("/api/check-password", json={"password": SECRETS[0]}).status_code == 409
+    assert client.post("/api/check-password", json={"password": TEST_SECRETS[0]}).status_code == 409
     assert client.post("/api/start-game", json={"name": "  "}).status_code == 422
 
 
 def test_leaderboard_keeps_one_current_result_per_run(tmp_path, monkeypatch):
     monkeypatch.setattr(app_module, "leaderboard", app_module.Leaderboard(tmp_path / "leaders.sqlite3"))
     client = client_with_game(FakeClient(), "Вася")
-    assert client.post("/api/check-password", json={"password": SECRETS[0]}).json()["correct"]
+    assert client.post("/api/check-password", json={"password": TEST_SECRETS[0]}).json()["correct"]
     first = client.get("/api/leaderboard").json()["entries"]
     assert len(first) == 1 and first[0]["name"] == "Вася" and first[0]["level"] == 1
     client.post("/api/next-level")
-    assert client.post("/api/check-password", json={"password": SECRETS[1]}).json()["correct"]
+    assert client.post("/api/check-password", json={"password": TEST_SECRETS[1]}).json()["correct"]
     entries = client.get("/api/leaderboard").json()["entries"]
     assert len(entries) == 1 and entries[0]["level"] == 2
 
@@ -112,7 +147,7 @@ def test_duplicate_name_returns_clickable_free_suggestion():
 def test_end_game_freezes_last_completed_result(tmp_path, monkeypatch):
     monkeypatch.setattr(app_module, "leaderboard", app_module.Leaderboard(tmp_path / "leaders.sqlite3"))
     client = client_with_game(FakeClient(), "Анна")
-    client.post("/api/check-password", json={"password": SECRETS[0]})
+    client.post("/api/check-password", json={"password": TEST_SECRETS[0]})
     before = client.get("/api/leaderboard").json()["entries"][0]
     state = client.post("/api/end-game").json()
     after = client.get("/api/leaderboard").json()["entries"][0]
@@ -127,11 +162,11 @@ def test_timer_runs_across_levels_and_end_does_not_change_result(monkeypatch):
 
     clock[0] = 1065.0
     assert client.get("/api/state").json()["elapsed_seconds"] == 65
-    client.post("/api/check-password", json={"password": SECRETS[0]})
+    client.post("/api/check-password", json={"password": TEST_SECRETS[0]})
     client.post("/api/next-level")
 
     clock[0] = 1100.0
-    client.post("/api/check-password", json={"password": SECRETS[1]})
+    client.post("/api/check-password", json={"password": TEST_SECRETS[1]})
     completed = client.get("/api/leaderboard").json()["entries"][0]
     assert completed["level"] == 2 and completed["elapsed_seconds"] == 100
 
@@ -168,13 +203,13 @@ def test_deterministic_detector_direct_spaced_reverse_and_base64():
 
 
 def test_direct_leak_is_withheld_from_level3():
-    c = client_with_game(FakeClient([SECRETS[2]]))
-    c.post("/api/check-password", json={"password": SECRETS[0]})
+    c = client_with_game(FakeClient([TEST_SECRETS[2]]))
+    c.post("/api/check-password", json={"password": TEST_SECRETS[0]})
     c.post("/api/next-level")
-    c.post("/api/check-password", json={"password": SECRETS[1]})
+    c.post("/api/check-password", json={"password": TEST_SECRETS[1]})
     c.post("/api/next-level")
     answer = c.post("/api/chat", json={"message": "hello"}).json()
-    assert answer["blocked"] and SECRETS[2] not in answer["reply"]
+    assert answer["blocked"] and TEST_SECRETS[2] not in answer["reply"]
 
 
 def test_level3_allows_an_indirect_hint():
@@ -200,7 +235,7 @@ def test_guards_keep_indirect_game_queries_available():
 
 def test_guard_failure_is_fail_closed():
     c = client_with_game(FakeClient(fail=True))
-    for password in SECRETS[:5]:
+    for password in TEST_SECRETS[:5]:
         c.post("/api/check-password", json={"password": password})
         c.post("/api/next-level")
     answer = c.post("/api/chat", json={"message": "hello"}).json()

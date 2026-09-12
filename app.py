@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import settings
-from game import Game
+from game import Game, generate_secret_parts
 from llm_client import LLMError, LLMRateLimitError, key_description, save_runtime_api_key
 
 logging.basicConfig(level=settings.log_level)
@@ -139,6 +139,7 @@ class Leaderboard:
 
 leaderboard = Leaderboard()
 
+
 def current_level(request: Request):
     request.session.setdefault("level", 0)
     request.session.setdefault("passed", False)
@@ -219,6 +220,7 @@ def update_groq_key(body: GroqKeyBody):
 
 @app.post("/api/start-game")
 def start_game(body: StartGameBody, request: Request):
+    global game
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=422, detail="Введите имя игрока.")
@@ -233,10 +235,12 @@ def start_game(body: StartGameBody, request: Request):
                 "suggested_name": suggested_name,
             },
         )
+    run_id = uuid.uuid4().hex
+    game = Game(game.client, generate_secret_parts(game.secret_parts))
     request.session.clear()
     request.session.update({
         "player_name": name,
-        "run_id": uuid.uuid4().hex,
+        "run_id": run_id,
         "started_at": time.time(),
         "ended": False,
         "last_completed_level": 0,
