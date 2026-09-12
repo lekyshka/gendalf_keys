@@ -26,8 +26,8 @@
 ## Установка на Linux или macOS
 
 ```bash
-git clone https://github.com/USERNAME/REPOSITORY.git
-cd REPOSITORY
+git clone [https://github.com/USERNAME/REPOSITORY](https://github.com/lekyshka/gendalf_keys).git
+cd gendalf_keys
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
