@@ -1,10 +1,13 @@
 import httpx
 import hashlib
+import logging
 import os
 import time
 from pathlib import Path
 
 from config import settings
+
+log = logging.getLogger("gandalf.llm")
 
 
 class LLMError(RuntimeError):
@@ -64,6 +67,13 @@ class LLMClient:
         api_key = self.current_api_key()
         if not api_key:
             raise LLMError("GROQ_API_KEY is not configured")
+        description = key_description(api_key)
+        log.info(
+            "groq_request model=%s key=%s fingerprint=%s",
+            model,
+            description["masked"],
+            description["fingerprint"],
+        )
         payload = {
             "model": model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
