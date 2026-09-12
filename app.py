@@ -14,7 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from config import settings
 from game import Game
-from llm_client import LLMError, LLMRateLimitError
+from llm_client import LLMError, LLMRateLimitError, key_description, save_runtime_api_key
 
 logging.basicConfig(level=settings.log_level)
 log = logging.getLogger("gandalf")
@@ -30,6 +30,9 @@ class PasswordBody(BaseModel):
 
 class StartGameBody(BaseModel):
     name: str
+
+class GroqKeyBody(BaseModel):
+    api_key: str
 
 
 class Leaderboard:
@@ -141,6 +144,24 @@ def state(request: Request):
 @app.get("/api/leaderboard")
 def get_leaderboard():
     return {"entries": leaderboard.entries()}
+
+@app.get("/api/settings/groq-key")
+def groq_key_status():
+    api_key = game.client.current_api_key()
+    return key_description(api_key)
+
+@app.post("/api/settings/groq-key")
+def update_groq_key(body: GroqKeyBody):
+    try:
+        description = save_runtime_api_key(body.api_key)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    log.warning(
+        "groq_api_key_updated key=%s fingerprint=%s",
+        description["masked"],
+        description["fingerprint"],
+    )
+    return description
 
 @app.post("/api/start-game")
 def start_game(body: StartGameBody, request: Request):

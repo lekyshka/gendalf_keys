@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Взломай Гэндальфа</title>
-  <link rel="stylesheet" href="/static/style.css?v=5">
+  <link rel="stylesheet" href="/static/style.css?v=6">
 </head>
 <body class="start-screen">
   <div class="page-layout">
@@ -25,6 +25,7 @@
         </div>
         <div class="header-actions">
           <div class="timer" aria-label="Общее время"><span>Время</span><strong id="timer">00:00</strong></div>
+          <button id="settings" class="secondary" type="button">Настройки</button>
           <button id="end-game" class="danger" type="button">Закончить игру</button>
           <button id="reset" class="secondary" type="button">Начать заново</button>
         </div>
@@ -47,6 +48,21 @@
       <p id="name-error" class="form-error" role="alert"></p><button type="submit">Начать игру</button>
     </form>
   </div>
-  <script src="/static/app.js?v=5"></script>
+  <div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <form id="settings-form" class="modal-card">
+      <p class="eyebrow">Подключение к Groq</p>
+      <h2 id="settings-title">Настройки API</h2>
+      <p id="active-key">Активный ключ: проверка…</p>
+      <label for="groq-key">Новый Groq API-ключ</label>
+      <input id="groq-key" type="password" autocomplete="off" placeholder="gsk_…" required>
+      <p class="settings-note">Ключ хранится только на сервере. В интерфейс и логи полностью не выводится.</p>
+      <p id="settings-result" class="form-error" role="status"></p>
+      <div class="modal-actions">
+        <button type="submit">Применить ключ</button>
+        <button id="close-settings" class="secondary" type="button">Закрыть</button>
+      </div>
+    </form>
+  </div>
+  <script src="/static/app.js?v=6"></script>
 </body>
 </html>

@@ -204,3 +204,22 @@ def test_llm_client_reports_rate_limit_after_retries(monkeypatch):
         pass
     else:
         raise AssertionError("rate limit должен быть передан вызывающему коду")
+
+
+def test_llm_client_uses_rotated_key_without_restart(tmp_path, monkeypatch):
+    key_file = tmp_path / ".groq_api_key"
+    key_file.write_text("first-test-key-123456789", encoding="utf-8")
+    headers = []
+    request = httpx.Request("POST", "https://example.test/v1/chat/completions")
+
+    def post(url, **kwargs):
+        headers.append(kwargs["headers"]["Authorization"])
+        return httpx.Response(200, request=request, json={"choices": [{"message": {"content": "SAFE"}}]})
+
+    monkeypatch.setattr("llm_client.httpx.post", post)
+    client = LLMClient(base_url="https://example.test/v1", api_key="", api_key_file=str(key_file))
+    client.generate_main("система", "запрос")
+    key_file.write_text("second-test-key-987654321", encoding="utf-8")
+    client.generate_main("система", "запрос")
+
+    assert headers == ["Bearer first-test-key-123456789", "Bearer second-test-key-987654321"]

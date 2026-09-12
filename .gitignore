@@ -1,4 +1,6 @@
-
+# Runtime API key managed from the settings window
+.groq_api_key
+.groq_api_key.tmp
 
 # Runtime data
 *.sqlite3

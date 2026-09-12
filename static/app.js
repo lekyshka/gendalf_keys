@@ -3,8 +3,9 @@ let state = null;
 let timerOrigin = 0;
 
 async function api(path, body) {
+  const getPaths = ['/api/state', '/api/leaderboard', '/api/settings/groq-key'];
   const response = await fetch(path, {
-    method: path === '/api/state' || path === '/api/leaderboard' ? 'GET' : 'POST',
+    method: body === undefined && getPaths.includes(path) ? 'GET' : 'POST',
     headers: {'Content-Type': 'application/json'},
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -139,6 +140,36 @@ $('#reset').onclick = async () => {
   const nextState = await api('/api/reset');
   resetChat(); $('#password').value = ''; $('#result').textContent = ''; $('#player-name').value = '';
   render(nextState);
+};
+
+$('#settings').onclick = async () => {
+  $('#settings-result').textContent = '';
+  $('#groq-key').value = '';
+  $('#settings-modal').hidden = false;
+  try {
+    const current = await api('/api/settings/groq-key');
+    $('#active-key').textContent = current.configured
+      ? `Активный ключ: ${current.masked}, fingerprint ${current.fingerprint}`
+      : 'Активный ключ не настроен.';
+  } catch (exception) {
+    $('#active-key').textContent = exception.message;
+  }
+};
+
+$('#close-settings').onclick = () => { $('#settings-modal').hidden = true; };
+
+$('#settings-form').onsubmit = async event => {
+  event.preventDefault();
+  const result = $('#settings-result');
+  result.textContent = 'Сохраняю…';
+  try {
+    const current = await api('/api/settings/groq-key', {api_key: $('#groq-key').value});
+    $('#groq-key').value = '';
+    $('#active-key').textContent = `Активный ключ: ${current.masked}, fingerprint ${current.fingerprint}`;
+    result.textContent = 'Новый ключ применён. Перезапуск не требуется.';
+  } catch (exception) {
+    result.textContent = exception.message;
+  }
 };
 
 setInterval(renderTimer, 1000);

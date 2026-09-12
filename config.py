@@ -9,6 +9,7 @@ load_dotenv()
 @dataclass(frozen=True)
 class Settings:
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    groq_api_key_file: str = os.getenv("GROQ_API_KEY_FILE", ".groq_api_key")
     groq_base_url: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
     main_model: str = os.getenv("MAIN_MODEL", "openai/gpt-oss-120b")
     guard_model: str = os.getenv("GUARD_MODEL", "qwen/qwen3.8-27b")
