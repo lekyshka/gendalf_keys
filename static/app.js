@@ -10,7 +10,14 @@ async function api(path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.detail || 'Не удалось выполнить запрос.');
+  if (!response.ok) {
+    const detail = data.detail;
+    const error = new Error(
+      typeof detail === 'string' ? detail : detail?.message || 'Не удалось выполнить запрос.'
+    );
+    error.details = detail;
+    throw error;
+  }
   return data;
 }
 
@@ -35,6 +42,13 @@ function setControlsEnabled(enabled) {
   $('#end-game').disabled = !enabled;
 }
 
+function clearNameForm() {
+  $('#name-form').reset();
+  $('#name-error').textContent = '';
+  $('#name-suggestion').hidden = true;
+  delete $('#name-suggestion').dataset.name;
+}
+
 function render(nextState) {
   state = nextState;
   const gameActive = state.game_started && !state.ended;
@@ -48,6 +62,7 @@ function render(nextState) {
   document.body.classList.toggle('game-active', gameActive);
   document.body.classList.toggle('start-screen', !gameActive);
   $('#name-modal').hidden = gameActive;
+  if (!gameActive) clearNameForm();
   if (gameActive && !$('#chat').childElementCount) resetChat();
   renderTimer();
 }
@@ -99,10 +114,25 @@ async function refreshLeaderboard() {
 $('#name-form').onsubmit = async event => {
   event.preventDefault();
   $('#name-error').textContent = '';
+  $('#name-suggestion').hidden = true;
   try {
     render(await api('/api/start-game', {name: $('#player-name').value}));
     resetChat(); $('#password').value = ''; $('#result').textContent = '';
-  } catch (exception) { $('#name-error').textContent = exception.message; }
+  } catch (exception) {
+    $('#name-error').textContent = exception.message;
+    const suggestedName = exception.details?.suggested_name;
+    if (suggestedName) {
+      const suggestion = $('#name-suggestion');
+      suggestion.dataset.name = suggestedName;
+      suggestion.textContent = `Использовать имя «${suggestedName}»`;
+      suggestion.hidden = false;
+    }
+  }
+};
+
+$('#name-suggestion').onclick = () => {
+  $('#player-name').value = $('#name-suggestion').dataset.name;
+  $('#name-form').requestSubmit();
 };
 
 $('#chat-form').onsubmit = async event => {
@@ -138,7 +168,7 @@ $('#end-game').onclick = async () => {
 
 $('#reset').onclick = async () => {
   const nextState = await api('/api/reset');
-  resetChat(); $('#password').value = ''; $('#result').textContent = ''; $('#player-name').value = '';
+  resetChat(); $('#password').value = ''; $('#result').textContent = '';
   render(nextState);
 };
 

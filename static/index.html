@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Взломай Гэндальфа</title>
-  <link rel="stylesheet" href="/static/style.css?v=6">
+  <link rel="stylesheet" href="/static/style.css?v=7">
 </head>
 <body class="start-screen">
   <div class="page-layout">
@@ -41,11 +41,13 @@
     </main>
   </div>
   <div id="name-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="name-modal-title">
-    <form id="name-form" class="modal-card">
+    <form id="name-form" class="modal-card" autocomplete="off">
       <p class="eyebrow">Новая игра</p><h2 id="name-modal-title">Как вас зовут?</h2>
       <p>Имя появится в таблице лидеров после первого пройденного уровня.</p>
-      <label for="player-name">Имя игрока</label><input id="player-name" maxlength="40" autocomplete="name" required>
-      <p id="name-error" class="form-error" role="alert"></p><button type="submit">Начать игру</button>
+      <label for="player-name">Имя игрока</label><input id="player-name" maxlength="40" autocomplete="off" required>
+      <p id="name-error" class="form-error" role="alert"></p>
+      <button id="name-suggestion" class="secondary name-suggestion" type="button" hidden></button>
+      <button type="submit">Начать игру</button>
     </form>
   </div>
   <div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
@@ -63,6 +65,6 @@
       </div>
     </form>
   </div>
-  <script src="/static/app.js?v=6"></script>
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>

@@ -56,6 +56,17 @@ class Leaderboard:
                     updated_at REAL NOT NULL
                 )"""
             )
+            connection.execute(
+                """CREATE TABLE IF NOT EXISTS player_names (
+                    normalized_name TEXT PRIMARY KEY,
+                    display_name TEXT NOT NULL
+                )"""
+            )
+            for (player_name,) in connection.execute("SELECT DISTINCT player_name FROM leaderboard"):
+                connection.execute(
+                    "INSERT OR IGNORE INTO player_names (normalized_name, display_name) VALUES (?, ?)",
+                    (self._normalize_name(player_name), player_name),
+                )
 
     def _connect(self):
         connection = sqlite3.connect(self.path, timeout=10)
@@ -78,6 +89,39 @@ class Leaderboard:
                     WHERE excluded.completed_level > leaderboard.completed_level""",
                 (run_id, player_name, level, elapsed_seconds, time.time()),
             )
+
+    @staticmethod
+    def _normalize_name(name: str) -> str:
+        return " ".join(name.split()).casefold()
+
+    def reserve_name(self, name: str) -> tuple[bool, str | None]:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            normalized = self._normalize_name(name)
+            occupied = connection.execute(
+                "SELECT 1 FROM player_names WHERE normalized_name = ?",
+                (normalized,),
+            ).fetchone()
+            if not occupied:
+                connection.execute(
+                    "INSERT INTO player_names (normalized_name, display_name) VALUES (?, ?)",
+                    (normalized, name),
+                )
+                return True, None
+
+            numbered_name = re.fullmatch(r"(.+?)(\d+)", name)
+            suggestion_base = numbered_name.group(1) if numbered_name else name
+            suffix = int(numbered_name.group(2)) + 1 if numbered_name else 2
+            while True:
+                suffix_text = str(suffix)
+                suggestion = f"{suggestion_base[:40 - len(suffix_text)]}{suffix_text}"
+                suggestion_taken = connection.execute(
+                    "SELECT 1 FROM player_names WHERE normalized_name = ?",
+                    (self._normalize_name(suggestion),),
+                ).fetchone()
+                if not suggestion_taken:
+                    return False, suggestion
+                suffix += 1
 
     def entries(self):
         with self._connect() as connection:
@@ -180,6 +224,15 @@ def start_game(body: StartGameBody, request: Request):
         raise HTTPException(status_code=422, detail="Введите имя игрока.")
     if len(name) > 40:
         raise HTTPException(status_code=422, detail="Имя должно быть не длиннее 40 символов.")
+    reserved, suggested_name = leaderboard.reserve_name(name)
+    if not reserved:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": f"Имя «{name}» уже занято.",
+                "suggested_name": suggested_name,
+            },
+        )
     request.session.clear()
     request.session.update({
         "player_name": name,

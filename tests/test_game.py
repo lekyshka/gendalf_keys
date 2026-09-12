@@ -85,9 +85,28 @@ def test_leaderboard_survives_store_recreation(tmp_path):
 
 
 def test_player_session_cookie_persists_for_one_year():
-    client = client_with_game(FakeClient(), "Вася")
+    app_module.game = Game(FakeClient())
+    client = TestClient(app_module.app)
     response = client.post("/api/start-game", json={"name": "Вася"})
     assert "Max-Age=31536000" in response.headers["set-cookie"]
+
+
+def test_duplicate_name_returns_clickable_free_suggestion():
+    app_module.game = Game(FakeClient())
+    first = TestClient(app_module.app)
+    second = TestClient(app_module.app)
+    third = TestClient(app_module.app)
+
+    assert first.post("/api/start-game", json={"name": "Аня"}).status_code == 200
+    conflict = second.post("/api/start-game", json={"name": "аня"})
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"] == {
+        "message": "Имя «аня» уже занято.",
+        "suggested_name": "аня2",
+    }
+    assert second.post("/api/start-game", json={"name": "аня2"}).status_code == 200
+    assert third.post("/api/start-game", json={"name": "аня"}).json()["detail"]["suggested_name"] == "аня3"
+    assert third.post("/api/start-game", json={"name": "аня2"}).json()["detail"]["suggested_name"] == "аня3"
 
 
 def test_end_game_freezes_last_completed_result(tmp_path, monkeypatch):
