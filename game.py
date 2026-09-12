@@ -45,14 +45,21 @@ NOUNS = {
 def generate_secret_parts(excluded: list[tuple[str, str]] | None = None) -> list[tuple[str, str]]:
     """Generate one unique lowercase adjective+noun password for every level."""
     excluded_parts = set(excluded or [])
-    available = [
-        (adjective, noun)
-        for gender, adjectives in ADJECTIVES.items()
-        for adjective in adjectives
-        for noun in NOUNS[gender]
-        if (adjective, noun) not in excluded_parts
-    ]
-    return secrets.SystemRandom().sample(available, len(LEVEL_CLASSES))
+    random = secrets.SystemRandom()
+    adjective_indexes = random.sample(range(len(ADJECTIVES["masculine"])), len(LEVEL_CLASSES))
+    used_nouns = set()
+    generated = []
+    for index in adjective_indexes:
+        candidates = [
+            (ADJECTIVES[gender][index], noun)
+            for gender in ADJECTIVES
+            for noun in NOUNS[gender]
+            if noun not in used_nouns and (ADJECTIVES[gender][index], noun) not in excluded_parts
+        ]
+        adjective, noun = random.choice(candidates)
+        generated.append((adjective, noun))
+        used_nouns.add(noun)
+    return generated
 
 
 class Game:

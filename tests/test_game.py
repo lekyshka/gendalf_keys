@@ -56,6 +56,10 @@ def test_generated_passwords_are_unique_lowercase_adjective_noun_pairs():
         any(adjective in ADJECTIVES[gender] and noun in NOUNS[gender] for gender in ADJECTIVES)
         for adjective, noun in generated
     )
+    assert len({next(index for index, form in enumerate(ADJECTIVES["masculine"])
+                     if adjective in {forms[index] for forms in ADJECTIVES.values()})
+                for adjective, _ in generated}) == 8
+    assert len({noun for _, noun in generated}) == 8
     assert all("".join(parts).islower() for parts in generated)
 
 
