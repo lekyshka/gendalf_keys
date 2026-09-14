@@ -35,6 +35,16 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+## Установка приложения из скачанной директории
+Перейдите в директорию и выполните следующие команды
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+cp .env.example .env
+```
+
 Откройте `.env` и вставьте свой ключ после `GROQ_API_KEY=`:
 
 ```env
@@ -62,6 +72,28 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```powershell
 git clone https://github.com/lekyshka/gendalf_keys.git
 cd gendalf_keys
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+Откройте `.env`, вставьте Groq API-ключ и замените `SESSION_SECRET`.
+
+Если PowerShell запрещает активацию окружения:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+## Установка приложения из скачанной директории
+Перейдите в директорию и выполните следующие команды
+
+В PowerShell:
+
+```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
