@@ -60,8 +60,8 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 В PowerShell:
 
 ```powershell
-git clone https://github.com/USERNAME/REPOSITORY.git
-cd REPOSITORY
+git clone https://github.com/lekyshka/gendalf_keys.git
+cd gendalf_keys
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
